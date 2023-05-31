@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import logging
 import re
 import hashlib
-
+import time
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.llms import AzureOpenAI
 from langchain.vectorstores.base import VectorStore
@@ -31,7 +31,8 @@ import pandas as pd
 import urllib
 
 from fake_useragent import UserAgent
-
+import streamlit as st
+from langchain.docstore.document import Document
 class LLMHelper:
     def __init__(self,
         document_loaders : BaseLoader = None, 
@@ -93,40 +94,51 @@ class LLMHelper:
 
         self.user_agent: UserAgent() = UserAgent()
         self.user_agent.random
-
-    def add_embeddings_lc(self, source_url):
+    
+    def test_vector_store(self):
         try:
-            documents = self.document_loaders(source_url).load()
+            documents = []
+            keys = []       
+            doc = Document(page_content="contenuto fake")
+            documents.append(doc)
+            keys.append("0002")
+            print(self.vector_store_full_address)
+            print(self.vector_store_password)
+            print(self.vector_store_protocol)
             
-            # Convert to UTF-8 encoding for non-ascii text
-            for(document) in documents:
-                try:
-                    if document.page_content.encode("iso-8859-1") == document.page_content.encode("latin-1"):
-                        document.page_content = document.page_content.encode("iso-8859-1").decode("utf-8", errors="ignore")
-                except Exception as e:
-                    print(e)
-                    pass
+            self.vector_store.add_documents(documents=documents, redis_url=self.vector_store_full_address,  index_name=self.index_name, keys=keys)
             
-            docs = self.text_splitter.split_documents(documents)
-                        
-            keys = []
-            for i, doc in enumerate(docs):
-                # Create a unique key for the document
-                source_url = source_url.split('?')[0]
-                filename = "/".join(source_url.split('/')[4:])
-                hash_key = hashlib.sha1(f"{source_url}_{i}".encode('utf-8')).hexdigest()
-                hash_key = f"doc:{self.index_name}:{hash_key}"
-                keys.append(hash_key)
-                doc.metadata = {"source": f"[{source_url}]({source_url}_SAS_TOKEN_PLACEHOLDER_)" , "chunk": i, "key": hash_key, "filename": filename}
-            
-            self.vector_store.add_documents(documents=docs, redis_url=self.vector_store_full_address,  index_name=self.index_name, keys=keys)
-        
         except Exception as e:
-            logging.error(f"Error adding embeddings for {source_url}: {e}")
+            st.error(e)
+
+    def add_mail_embeddings(self, path: str):
+        try:
+
+            files = os.listdir(path)
+            
+            i = 0
+            for file in files:
+                try:
+                    i += 1
+                    st.write(f"Carico il file {file}...")
+                    file_complete_path = os.path.join(path, file)
+                    documents = []
+                    keys = []
+                    with open(file_complete_path, 'r') as file:
+                        tagged_mail = file.read()
+                    documents.append(tagged_mail)
+                    keys.append(i)
+                    time.sleep(3)
+                    st.write(f"Aggiungo la mail con chiave {i} al vector store...")
+                    self.vector_store.add_documents(documents=documents, redis_url=self.vector_store_full_address,  index_name=self.index_name, keys=keys)
+                except Exception as eloop:
+                    st.error(eloop)
+                    pass    
+        except Exception as e:
             print(e)
             raise e
 
-    def get_all_documents(self, k: int = None):
+    def get_all_documents(self, k: int):
         
         result = self.vector_store.similarity_search(query="*", k= k if k else self.k)
 
@@ -178,8 +190,7 @@ class LLMHelper:
         container_sas = self.blob_client.get_container_sas()
         
         result['answer'] = result['answer'].split('SOURCES:')[0].split('Sources:')[0].split('SOURCE:')[0].split('Source:')[0]
-        sources = sources.replace('_SAS_TOKEN_PLACEHOLDER_', container_sas)
-
+        
         return question, result['answer'], context, sources
 
     def get_embeddings_model(self):

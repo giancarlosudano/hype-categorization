@@ -3,14 +3,6 @@ import os
 import traceback
 from utilities.helper import LLMHelper
 
-def delete_embedding():
-    llm_helper.vector_store.delete_keys([f"doc:{st.session_state['embedding_to_drop']}"])
-
-def delete_file():
-    embeddings_to_delete = data[data.filename == st.session_state['file_to_drop']].key.tolist()
-    embeddings_to_delete = list(map(lambda x: f"doc:{x}", embeddings_to_delete))
-    llm_helper.vector_store.delete_keys(embeddings_to_delete)
-
 try:
 
     llm_helper = LLMHelper()
