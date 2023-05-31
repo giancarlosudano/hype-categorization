@@ -34,36 +34,14 @@ from utilities.translator import AzureTranslatorClient
 from utilities.customprompt import PROMPT
 from utilities.redis import RedisExtended
 
-def upload_all_files():
-    local_path = st.session_state['local_path']
-    count = os.listdir(local_path).count
-    st.text(f"File recuperati : {count}")
-
-    for file_name in os.listdir(local_path):
-        try:
-            with open(os.path.join(local_path, file_name), "r", encoding="utf-8") as file:
-                testo = file.read()
-                st.text(file_name)    
-                st.text("Upload Start...")
-                source_url = llm_helper.blob_client.upload_file(testo, file_name=file_name, content_type='text/plain; charset=utf-8')
-                st.text("Sleep time")          
-                time.sleep(st.session_state['delay'])
-                st.text("Start Embedding...")
-                llm_helper.add_embeddings_lc(source_url)
-                st.success(f"Embedded {file_name}")
-                st.text("Sleep time")          
-                time.sleep(st.session_state['delay'])
-        except Exception as e:
-            st.error(traceback.format_exc())
-    
-    st.text("Fine elaborazione")    
-
 try:
     st.title("OpenAI - Embedding Files")
     llm_helper = LLMHelper()
     st.session_state['local_path'] = st.text_input("Percorso locale dei file da embeddare:", value="C:\\NoSync\\Hype\\splitted")
-    st.session_state['delay'] = st.slider("Delay tra un file e l'altro:", 1, 90, 1)
-    st.button("Compute Embeddings" , on_click=upload_all_files)
+    if st.button("Compute Embeddings"):
+        # local_path = st.session_state['local_path']
+        # llm_helper.add_mail_embeddings(st.session_state['local_path'])
+        llm_helper.test_vector_store()
 
 except Exception as e:
     st.error(traceback.format_exc())
